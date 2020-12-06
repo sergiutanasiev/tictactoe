@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIC TAC TOE - Sergiu Tanasiev</title>
+    <link rel="stylesheet" href="style.css">
+    <div class="score-board">
+        <div class="player-score player-human">Player <input  id="humman-score" type="number" min="0" disabled value="0"></div>
+        <div class="player-score player-ai">Ai <input id="ai-score" type="number" min="0" disabled value="0"></div>
+    </div>
+    <div id="container">
+        <div id="overlay"></div>
+        <div id="board">
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+            <button class="cell"></button>
+        </div>
+    </div>
+    <div class="actions">
+        <button id="newGame">New Game</button>
+    </div>
+</head>
+<body>
+    <script>
+        // Board declaration
+        class Board {
+            constructor(grid = makeBoard(9), gameState = false) {
+                this.grid = grid
+                this.gameState = gameState
+            }
+        }
+        // Player declaration
+        class Player {
+            constructor(human = 0, ai = 1, humanScore = 0, scoreHuman = 0, scoreAi = 0) {
+                this.human = human
+                this.ai = ai
+                this.scoreHuman = scoreHuman
+                this.scoreAi = scoreAi
+            }
+        }
+        let board = new Board()
+        let player = new Player()
+        let htmlCells = [...document.querySelectorAll('.cell')]
+
+        // Checks and modifies the game state if a player won or there is a draw
+        function checkGameState(b, p) {
+            const winConditions = [
+                [0, 1, 2], [0, 3, 6], [0, 4, 8], [1, 4, 7], [2, 4, 6], [2, 5, 8], [3, 4, 5], [6, 7, 8]
+            ]
+            // Reduce by player number
+            const checkedSquares = b.reduce((acc, curr, index) => {
+                if (curr === p) {
+                    return [...acc, index]
+                } else {
+                    return acc
+                }
+            }, [])
+            // Game state condition for winning
+            // Compare current condition to all postible win conditions
+            let gameState = false
+            for (let [index, condition] of winConditions.entries()) {
+                if(condition.every(el => checkedSquares.indexOf(el) > -1)) {
+                    gameState = {
+                        winner: p,
+                        condition: index
+                    }
+                    break;
+                }
+            }
+            return gameState
+        }
+        // Generate a new board
+        function makeBoard(size) {
+            return Array.from(Array(size)).fill('')
+        }
+        // Sets up a new game
+        function newGame() {
+            // Reset all for a New Game
+            board = new Board()
+            
+            htmlCells.forEach((cell) => {
+                cell.innerHTML = ''
+                cell.className = 'cell'
+                cell.disabled = false
+            })
+            document.getElementById('overlay').className = ''
+        }
+        // Returns all avaible empty positions in current board
+        function emptyPositions(board) {
+            const emptyCells = []
+            board.forEach((el, index) => {
+                if (el === '') {
+                    emptyCells.push(index)
+                }
+            })
+            return emptyCells
+        }
+        // Watcher for player interaction with board
+        function watcher() {
+            htmlCells.forEach((cell, index) => {
+                htmlCells[index].addEventListener('click', () => {turn(index)}, false)
+            })
+        }
+        // Player/Ai interaction with the board
+        function turn(index) {
+            // Check if position in board is empty
+            if (board.grid[index] === '') {
+                markCell(player.human, index)
+                let gameState = checkGameState(board.grid, player.human)
+                let emptyCells = emptyPositions(board.grid)
+                // Check if there are still empty cells left
+                if (emptyCells.length > 0) {
+                    // If gameState return false game is still PLAYING
+                    if (!gameState) {
+                        // Ai best move
+                        markCell(player.ai, minimax(board.grid, player.ai).index)
+                    } else {
+                        // Game is finsied
+                        endGame(gameState)
+                    }
+                } else {
+                    // Draw condition output
+                    endGame({
+                        winner: 2,
+                        condition: 'draw'
+                    })
+                }
+                
+            }
+        }
+        /* Marks the cell with the players symbol, and adds the player's number to the board.grid array
+            Add a class for the coresponding player to color the symbol
+            After marking the board, the game state is evaluated to check a winning condition for the current player's move
+            If something other than false is returned a winning condition has been selected */
+        async function markCell(p, index) {
+            board.grid[index] = p
+            // If player is AI delay the symbol render for impression of AI processing a move
+            if (p === 1) {
+                await new Promise((resolve, reject) => setTimeout(resolve, 250));
+                htmlCells[index].innerHTML = getPlayerSymbol(p)
+            } else {
+                htmlCells[index].innerHTML = getPlayerSymbol(p)
+            }
+            htmlCells[index].classList.add(p === 0 ? 'humman' : 'ai')
+            let gameState = checkGameState(board.grid, p)
+            if (checkGameState(board.grid, p)) endGame(gameState)
+        }
+        // Return a player's symbol in sting format for html output
+        function getPlayerSymbol(p) {
+            return p === 0 ? 'x' : 'o'
+        }
+        // Prints out the winning combiation
+        function endGame(gameState) {
+            // Output to html an overlay than will cast a line on the winning condition
+            if(gameState.winner < 2) {
+                document.getElementById('overlay').classList.add('visible', `condition-${gameState.condition}`, 
+                    gameState.winner === 0 ? 'humman-won' : 'ai-won'
+                )
+                // Score save and output to html
+                if (gameState.winner === 0) {
+                    player.scoreHuman += 1
+                    document.getElementById('humman-score').value = player.scoreHuman
+                } else {
+                    player.scoreAi += 1
+                    document.getElementById('ai-score').value = player.scoreAi
+                }
+            }
+            htmlCells.forEach((cell, index) => {
+                cell.disabled = true
+            })
+            document.getElementById('overlay').classList.add('visible', `condition-${gameState.condition}`)
+            
+        }
+        function evaluateState () {
+            // Check if board is empty, a case for draw`
+            if (emptyPositions.length === 0) {
+                return true
+            }
+            return false
+        }
+        function minimax(board, p) {
+            
+            let emptyCells = emptyPositions(board)
+            // Game state evaluation
+            if (checkGameState(board, player.human)) {
+                return {score: -100}
+            } else if (checkGameState(board, player.ai)) {
+                return {score: 100}
+            } else if (emptyCells.length === 0) {
+                return {score: 0}
+            }
+            
+            //Recursive calls for mininmax algorithm
+            let moveList = []
+            for (let i of emptyCells.keys()) {
+                // Clone board
+                let cloneBoard = new Board([...board]).grid
+                let move = {}
+                move.index = emptyCells[i]
+                cloneBoard[emptyCells[i]] = p
+                // If player is AI
+                if (p === 1) {
+                    let result = minimax(cloneBoard, player.human)
+                    move.score = result.score
+                // If player is HUMAN
+                } else {
+                    let result = minimax(cloneBoard, player.ai)
+                    move.score = result.score
+                }
+                moveList.push(move)
+            }
+
+            let bestMove
+            // If player is AI
+            if (p === 1) {
+                let bestScore = -Infinity
+                for (let i of moveList.keys()) {
+                    if (moveList[i].score > bestScore) {
+                        bestScore = moveList[i].score
+                        bestMove = i
+                    }
+                }
+
+            // If player is HUMAN    
+            } else {
+                let bestScore = Infinity
+                for (let i of moveList.keys()) {
+                    if (moveList[i].score < bestScore) {
+                        bestScore = moveList[i].score
+                        bestMove = i
+                    }
+                }
+            }
+            return moveList[bestMove]
+        }
+        // Run after page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('newGame').addEventListener('click', e => {
+                newGame()
+            })
+            watcher()
+        }, false);
+        
+    </script>
+</body>
+</html>
