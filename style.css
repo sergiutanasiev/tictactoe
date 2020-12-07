@@ -165,11 +165,11 @@ input[type="number"] {
     top: 85%;
     left: 0;
 }
-.condition-draw:after {
-    content: 'DRAW' !important;
+.condition-tie:after {
+    content: 'A TIE' !important;
     width: 100%;
     height: 100%;
-    left: 28%;
+    left: 35%;
     top: 41%;
     font-size: 4em;
     color: #FFF;
